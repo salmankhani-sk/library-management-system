@@ -1,5 +1,3 @@
-# app/routes/auth.py
-
 # Import APIRouter, HTTPException, and status from FastAPI to create a router for authentication routes.
 # APIRouter organizes routes, HTTPException handles errors, and status provides HTTP status codes.
 from fastapi import APIRouter, HTTPException, status, Depends

@@ -1,4 +1,3 @@
-# backend/app/database.py
 
 # Import create_engine from SQLAlchemy to create a database engine, which manages the connection to the database.
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
@@ -82,10 +81,11 @@ class Book(Base):
     
     # Define the 'status' column as a String with a default value of "available", indicating if the book is available or borrowed.
     status = Column(String, default="available")
-    
+    thumbnail = Column(String, nullable=True)
     # Establish a one-to-many relationship with the Transaction model, linking books to their transaction records.
     # 'back_populates' connects this relationship to the 'book' field in the Transaction model.
     transactions = relationship("Transaction", back_populates="book")
+    
 
 # Define the Transaction class, representing the 'transactions' table in the database, inheriting from Base.
 class Transaction(Base):

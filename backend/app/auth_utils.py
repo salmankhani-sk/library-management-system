@@ -1,4 +1,3 @@
-# app/auth_utils.py
 
 # Import Depends and HTTPException from FastAPI for handling dependencies and raising HTTP errors.
 # Depends is used to inject dependencies into route functions, while HTTPException is for error handling.

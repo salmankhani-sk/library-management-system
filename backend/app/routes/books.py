@@ -1,69 +1,111 @@
-# /app/routes/book.py
 
-# Import APIRouter from FastAPI to create a router for organizing and grouping related endpoints.
-# APIRouter allows modularizing routes into separate files or modules for better organization.
-from fastapi import APIRouter, Query
+# Import APIRouter and Depends from FastAPI to create a router and handle dependency injection.
+from fastapi import APIRouter, Depends
 
-# Import the requests library to make HTTP requests to external APIs.
-# Here, it's used to interact with the Google Books API to fetch book data.
+# Import Session from SQLAlchemy ORM to manage database sessions.
+from sqlalchemy.orm import Session
+
+# Import requests library to make HTTP requests to the Google Books API.
 import requests
 
-# Instantiate an APIRouter object, which will hold the routes related to book operations.
-# This router can be included in the main FastAPI application to add these routes.
+# Import logging to debug database operations.
+import logging
+
+# Configure logging to output to the console for debugging.
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Import get_db and Book from the database module.
+from app.database import get_db, Book
+
+# Instantiate an APIRouter object for book-related routes.
 router = APIRouter()
 
-# Define a GET endpoint at "/books/search/" using the router.
-# This endpoint is used to search for books based on a query string provided by the client.
-# The 'query' parameter is annotated as a string, indicating it expects a string input from the client.
+# Define a GET endpoint at "/books/search/" to search for books.
 @router.get("/books/search/")
-def search_books(query: str):
-    # Set the base URL for the Google Books API, specifically the volumes endpoint.
-    # This API allows searching for books by various criteria, such as title, author, or ISBN.
+def search_books(query: str, db: Session = Depends(get_db)):
+    # Set the Google Books API endpoint.
     google_api = "https://www.googleapis.com/books/v1/volumes"
     
-    # Make an HTTP GET request to the Google Books API with the search query as a parameter.
-    # The 'params' argument passes the query as 'q' in the URL, e.g., "?q=<query>" in the request.
-    response = requests.get(google_api, params={"q": query})
+    # Make a GET request to the Google Books API with maxResults=40.
+    response = requests.get(google_api, params={"q": query, "maxResults": 40})
     
-    # Parse the JSON response from the API into a Python dictionary for easy access.
-    # The response contains data about the books matching the search query.
+    # Log and handle API request failures.
+    if not response.ok:
+        logger.error(f"Google Books API request failed: {response.status_code} - {response.text}")
+        return []
+    
+    # Parse the JSON response.
     data = response.json()
+    logger.info(f"Google Books API raw response: {data}")
 
-    # Initialize an empty list to store the processed book data.
-    # This list will hold dictionaries with selected book information to be returned to the client.
+    # Initialize a list for processed book data and a set for tracking ISBNs.
     books = []
+    processed_isbns = set()
     
-    # Iterate over the 'items' list in the API response, which contains individual book entries.
-    # Use .get("items", []) to safely handle cases where 'items' is missing (e.g., no results), defaulting to an empty list.
+    # Process each book item from the API response.
     for item in data.get("items", []):
-        # Extract the 'volumeInfo' dictionary from the book item, which contains detailed book information.
-        # Use .get("volumeInfo", {}) to default to an empty dict if 'volumeInfo' is missing.
         info = item.get("volumeInfo", {})
-        
-        # Extract the 'imageLinks' dictionary from 'volumeInfo', which contains URLs for book cover images.
-        # Use .get("imageLinks", {}) to default to an empty dict if 'imageLinks' is missing.
         image_links = info.get("imageLinks", {})
-        
-        # Extract the 'industryIdentifiers' list from 'volumeInfo', which contains identifiers like ISBN.
-        # Use .get("industryIdentifiers", []) to default to an empty list if 'industryIdentifiers' is missing.
         industry_ids = info.get("industryIdentifiers", [])
+        
+        # Prefer ISBN-13, fall back to ISBN-10, or use "Unknown".
+        isbn = next(
+            (id['identifier'] for id in industry_ids if id['type'] == 'ISBN_13'),
+            next((id['identifier'] for id in industry_ids if id['type'] == 'ISBN_10'), "Unknown")
+        )
+        
+        logger.info(f"Processing book with ISBN: {isbn}")
 
-        # Use a generator expression to find the ISBN identifier from the 'industryIdentifiers' list.
-        # It looks for the first identifier where 'type' contains 'ISBN' (e.g., 'ISBN_10' or 'ISBN_13').
-        # If no ISBN is found, default to "Unknown" using the next() function's default parameter.
-        isbn = next((id['identifier'] for id in industry_ids if 'ISBN' in id['type']), "Unknown")
+        # Skip books with ISBN=Unknown to avoid duplicates.
+        if isbn == "Unknown":
+            logger.info(f"Skipping book with ISBN=Unknown, Title={info.get('title', 'Unknown')}")
+            continue
 
-        # Append a dictionary of selected book information to the 'books' list.
-        # This dictionary formats the data in a way that's easy for the client to consume.
+        # Skip if ISBN has already been processed.
+        if isbn in processed_isbns:
+            logger.info(f"Skipping duplicate ISBN: {isbn}")
+            continue
+
+        # Check if the book exists in the database.
+        existing_book = db.query(Book).filter(Book.isbn == isbn).first()
+        
+        # If the book doesn't exist, add it to the database.
+        if not existing_book:
+            try:
+                new_book = Book(
+                    title=info.get("title", "Unknown"),
+                    author=", ".join(info.get("authors", ["Unknown"])),
+                    isbn=isbn,
+                    status="available",
+                    thumbnail=image_links.get("thumbnail")
+                )
+                db.add(new_book)
+                db.commit()
+                db.refresh(new_book)
+                logger.info(f"Added book to database: {new_book.title} (ISBN: {new_book.isbn})")
+                book = new_book
+            except Exception as e:
+                logger.error(f"Failed to add book with ISBN {isbn}: {str(e)}")
+                continue
+        else:
+            book = existing_book
+            logger.info(f"Found existing book: {book.title} (ISBN: {book.isbn})")
+
+        # Add ISBN to processed set.
+        processed_isbns.add(isbn)
+
+        # Log the book being appended to the response.
+        logger.info(f"Appending book to response: ID={book.id}, ISBN={book.isbn}, Title={book.title}")
+        # Append book data from the database to the response.
         books.append({
-            "id": item.get("id"),  # The unique Google Books ID for the book, directly from the 'item' dictionary.
-            "title": info.get("title", "Unknown"),  # The book's title, defaulting to "Unknown" if not present in 'volumeInfo'.
-            "author": ", ".join(info.get("authors", ["Unknown"])),  # Join multiple authors into a string with commas, default to "Unknown" if no authors.
-            "isbn": isbn,  # The ISBN found from the generator expression or "Unknown" if not available.
-            "status": "available",  # Hardcoded status as "available" (could be dynamic in a full system).
-            "thumbnail": image_links.get("thumbnail"),  # URL for the book's thumbnail image, if available; None if not present.
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "isbn": book.isbn,
+            "status": book.status,
+            "thumbnail": book.thumbnail
         })
 
-    # Return the list of books as the response to the client's request.
-    # FastAPI will automatically serialize this list of dictionaries into JSON format for the HTTP response.
+    logger.info(f"Returning {len(books)} books for query: {query}")
     return books

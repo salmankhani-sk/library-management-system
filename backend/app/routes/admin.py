@@ -1,4 +1,3 @@
-# app/routes/admin.py
 
 # Import APIRouter, Depends, and HTTPException from FastAPI to create a router, handle dependencies, and manage errors.
 # APIRouter organizes admin-related routes, Depends injects dependencies, and HTTPException raises HTTP errors.
