@@ -113,30 +113,9 @@ The project uses PostgreSQL to store book and user data. Follow these steps to i
 
   - Download the installer from postgresql.org.
   - Run the installer and follow the prompts.
-  - Set a password for the `postgres` user (e.g., `khanss`) during installation.
+  - Set a password for the `postgres` user  during installation.
 
-- **Linux (Ubuntu)**:
 
-  - Update packages and install PostgreSQL:
-
-    ```bash
-    sudo apt update
-    sudo apt install postgresql postgresql-contrib
-    ```
-
-- **Mac**:
-
-  - Install Homebrew if not already installed:
-
-    ```bash
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    ```
-
-  - Install PostgreSQL:
-
-    ```bash
-    brew install postgresql
-    ```
 
 ### Start PostgreSQL
 
@@ -146,21 +125,7 @@ The project uses PostgreSQL to store book and user data. Follow these steps to i
   - If not, use pgAdmin or start it via Services:
     - Press `Win + R`, type `services.msc`, find `postgresql-x64-XX`, and start it.
 
-- **Linux**:
 
-  - Start the service:
-
-    ```bash
-    sudo service postgresql start
-    ```
-
-- **Mac**:
-
-  - Start with Homebrew:
-
-    ```bash
-    brew services start postgresql
-    ```
 
 ### Create a Database
 
@@ -207,12 +172,7 @@ The backend is built with FastAPI and requires a virtual environment to manage P
      .\env\Scripts\activate
      ```
 
-   - **Linux/Mac**:
-
-     ```bash
-     python3 -m venv env
-     source env/bin/activate
-     ```
+   
 
 2. You’ll see `(env)` in your terminal, indicating the virtual environment is active.
 
