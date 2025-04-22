@@ -204,8 +204,8 @@ The backend requires a `.env` file to store configuration settings, such as the 
 
 2. Replace the placeholders:
 
-   - `your_password`: Your PostgreSQL password (e.g., `khanss`).
-   - `your_google_books_api_key`: Obtain a key from the Google Cloud Console. If you don’t have one, contact the repository owner for a temporary key.
+   - `your_password`: Your PostgreSQL password (e.g., `admin123`).
+   - `your_google_books_api_key`: Obtain a key from the Google Cloud Console. If you don’t have one, contact me (salmank.developer@gmail.com) for a temporary key.
    - `your_secret_key`: A secure key for JWT authentication (see Generate a Secret Key).
 
 3. Verify the `.env` file:
@@ -260,7 +260,7 @@ To run the application, you need to start both the backend and frontend servers.
 
 ### Run the Backend
 
-1. From the project root (`library-management-system`), with the virtual environment activated:
+1. From the project root (`library-management-system/backend`), with the virtual environment activated:
 
    ```bash
    uvicorn app.main:app --reload
