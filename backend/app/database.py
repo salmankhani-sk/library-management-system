@@ -18,8 +18,6 @@ from dotenv import load_dotenv
 # Import os to interact with the operating system, such as retrieving environment variables.
 import os
 
-# Import Enum from SQLAlchemy to potentially define enumerated types (e.g., for status fields), though not used here.
-from sqlalchemy import Enum
 
 # Load environment variables from a .env file, typically located in the project root, into the application's environment.
 load_dotenv()

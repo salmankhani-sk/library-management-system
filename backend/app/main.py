@@ -1,4 +1,3 @@
-# backend/app/main.py
 
 # Import FastAPI class for creating the web application, Depends for dependency injection, and HTTPException for error handling.
 from fastapi import FastAPI, Depends, HTTPException
@@ -13,7 +12,7 @@ from app.routes import books, book_routes, auth as auth_routes, admin
 # Import get_password_hash function from auth_utils to securely hash user passwords before storing them.
 from app.auth_utils import get_password_hash
 
-# Instantiate the FastAPI application, which serves as the core of the web service.
+# Initialize  the FastAPI application, which serves as the core of the web service.
 app = FastAPI()
 
 # Include the books router, adding endpoints related to book management (e.g., listing books).
