@@ -14,7 +14,7 @@ class UserLogin(BaseModel):
     # Pydantic will validate that this is a non-empty string when an instance is created.
     username: str
     # The password field is a string, required for authentication during login.
-    # No additional validation (e.g., length) is applied here, but it must be a string.
+    # No additional validation (e.g., length) is applied here.
     password: str
 
 # Define the UserCreate class, inheriting from BaseModel, to represent the data structure for creating a new user.
@@ -49,7 +49,7 @@ class UserRead(BaseModel):
 # Define the Token class, inheriting from BaseModel, to represent the structure of the authentication token returned after login.
 # This model is used to structure the response sent to the client after successful authentication.
 class Token(BaseModel):
-    # The access_token field is a string, containing the JWT or other token used for authentication.
+    # The access_token field is a string, containing the JWT  token used for authentication.
     # This token is typically sent in the Authorization header of subsequent requests.
     access_token: str
     # The token_type field is a string with a default value of "bearer", indicating the type of token.
