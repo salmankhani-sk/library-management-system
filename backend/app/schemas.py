@@ -6,9 +6,6 @@ from pydantic import BaseModel, EmailStr
 # Literal restricts a variable to specific string values, improving type safety.
 from typing import Literal
 
-# Redundant import of BaseModel; this line is unnecessary since BaseModel is already imported above.
-# Including it again does not affect functionality but is not best practice.
-from pydantic import BaseModel
 
 # Define the UserLogin class, inheriting from BaseModel, to represent the data structure for user login requests.
 # This model ensures that login data conforms to the specified structure and types.
