@@ -1,4 +1,3 @@
-# app/core/security.py
 
 # Import CryptContext from passlib to handle password hashing and verification.
 # CryptContext provides a flexible interface for hashing passwords using various schemes.
