@@ -1,96 +1,114 @@
-# Import necessary modules from FastAPI and SQLAlchemy.
-from fastapi import APIRouter, HTTPException, Depends  # For creating routes, raising exceptions, and dependency injection
-from sqlalchemy.orm import Session  # For interacting with the database session
-from app.database import Book, Transaction, get_db  # Import Book and Transaction models and the DB session dependency
-from app.auth_utils import get_current_user  # Import the function that fetches the currently logged-in user
-from app.database import User  # Import the User model
-from datetime import datetime  # For dealing with timestamps (borrow and return dates)
 
-# Create an instance of APIRouter to group related routes under a common prefix (optional) or to modularize code.
-router = APIRouter()
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from app.database import Book, Transaction, User, get_db
+from app.auth_utils import get_current_user
+from datetime import datetime
+from pydantic import BaseModel
+import logging
 
-# PATCH endpoint to update the status of a book (borrow or return).
-@router.patch("/books/{isbn}/status")  # This route is accessed via PATCH method with ISBN passed as a path parameter
-def update_book_status(
-    isbn: str,  # ISBN of the book passed in the URL
-    status: str,  # New status for the book ('available' or 'borrowed') passed as a query parameter
-    current_user: User = Depends(get_current_user),  # Inject the currently logged-in user using dependency injection
-    db: Session = Depends(get_db)  # Inject a SQLAlchemy database session using dependency injection
-):
-    # Query the database to find the book by its ISBN.
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/books", tags=["Book Actions"])
+
+# Pydantic model for borrow/return payload
+class BookAction(BaseModel):
+    isbn: str
+
+@router.get("/{isbn}")
+def get_book(isbn: str, db: Session = Depends(get_db)):
+    """
+    Fetch a book by ISBN.
+    """
     book = db.query(Book).filter(Book.isbn == isbn).first()
-
-    # If no book is found, return a 404 Not Found error.
     if not book:
+        logger.error(f"Book not found for ISBN: {isbn}")
         raise HTTPException(status_code=404, detail="Book not found")
-
-    # Validate that the provided status is either "available" or "borrowed".
-    if status not in ["available", "borrowed"]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-
-    # Case 1: Borrowing the book (status becomes "borrowed" from "available").
-    if status == "borrowed" and book.status == "available":
-        # Create a new transaction indicating the book was borrowed by the user.
-        transaction = Transaction(
-            user_id=current_user.id,  # ID of the user borrowing the book
-            book_id=book.id,  # ID of the book being borrowed
-            borrow_date=datetime.utcnow(),  # Set current UTC time as borrow date
-            status="active"  # Mark the transaction as active
-        )
-        db.add(transaction)  # Add the transaction to the database
-        book.status = "borrowed"  # Update the book's status to "borrowed"
-
-    # Case 2: Returning the book (status becomes "available" from "borrowed").
-    elif status == "available" and book.status == "borrowed":
-        # Find the active transaction for this book (i.e., the currently borrowed instance).
-        transaction = db.query(Transaction).filter(
-            Transaction.book_id == book.id,  # Match the book ID
-            Transaction.status == "active"  # Make sure it's the active transaction
-        ).first()
-
-        # If a matching transaction exists, update it to mark the return.
-        if transaction:
-            transaction.return_date = datetime.utcnow()  # Set current UTC time as return date
-            transaction.status = "returned"  # Mark the transaction as returned
-
-        book.status = "available"  # Update the book's status to "available"
-
-    # If the requested status transition doesn't make logical sense (like borrowing an already borrowed book), raise error.
-    else:
-        raise HTTPException(status_code=400, detail="Invalid status transition")
-
-    # Save all changes to the database.
-    db.commit()
-
-    # Refresh the book object to reflect the latest changes from the DB.
-    db.refresh(book)
-
-    # Return a success message along with the updated book data.
-    return {
-        "message": f"Book status updated to {book.status}",
-        "book": {
-            "title": book.title,
-            "isbn": book.isbn,
-            "status": book.status,
-        }
-    }
-
-# GET endpoint to fetch book details and current status using the ISBN.
-@router.get("/books/{isbn}")  # This route is accessed via GET method with ISBN as a path parameter
-def get_book_status(isbn: str, db: Session = Depends(get_db)):  # ISBN is input, db session is injected
-    # Query the database for the book with the given ISBN.
-    book = db.query(Book).filter(Book.isbn == isbn).first()
-
-    # If the book doesn't exist, raise a 404 error.
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    # Return the book details including its current status.
     return {
         "id": book.id,
         "title": book.title,
         "author": book.author,
         "isbn": book.isbn,
         "status": book.status,
-        "thumbnail": book.thumbnail  # Include thumbnail image URL if available
+        "thumbnail": book.thumbnail
     }
+
+@router.get("/{isbn}/transaction")
+def get_book_transaction(isbn: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Check if the current user has an active transaction for the book.
+    """
+    logger.info(f"Checking transaction for ISBN: {isbn}, user: {current_user.id}")
+    book = db.query(Book).filter(Book.isbn == isbn).first()
+    if not book:
+        logger.error(f"Book not found for ISBN: {isbn}")
+        raise HTTPException(status_code=404, detail="Book not found")
+    transaction = db.query(Transaction).filter(
+        Transaction.book_id == book.id,
+        Transaction.user_id == current_user.id,
+        Transaction.status == "active"
+    ).first()
+    if not transaction:
+        return {"has_active_transaction": False, "transaction_id": None}
+    return {
+        "has_active_transaction": True,
+        "transaction_id": transaction.id,
+        "borrow_date": transaction.borrow_date
+    }
+
+@router.post("/borrow")
+def borrow_book(action: BookAction, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Borrow a book by ISBN, creating a transaction and updating book status.
+    """
+    logger.info(f"Received borrow request: {action.dict()}")
+    isbn = action.isbn
+    book = db.query(Book).filter(Book.isbn == isbn).first()
+    if not book:
+        logger.error(f"Book not found for ISBN: {isbn}")
+        raise HTTPException(status_code=404, detail="Book not found")
+    if book.status != "available":
+        logger.warning(f"Book not available: {isbn}, status: {book.status}")
+        raise HTTPException(status_code=400, detail="Book is not available")
+
+    transaction = Transaction(
+        user_id=current_user.id,
+        book_id=book.id,
+        borrow_date=datetime.utcnow(),
+        status="active"
+    )
+    book.status = "borrowed"
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+    logger.info(f"Book borrowed successfully: {isbn}, transaction_id: {transaction.id}")
+    return {"message": "Book borrowed successfully", "transaction_id": transaction.id}
+
+@router.post("/return")
+def return_book(action: BookAction, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Return a borrowed book by ISBN, updating transaction and book status.
+    """
+    logger.info(f"Received return request: {action.dict()}")
+    isbn = action.isbn
+    book = db.query(Book).filter(Book.isbn == isbn).first()
+    if not book:
+        logger.error(f"Book not found for ISBN: {isbn}")
+        raise HTTPException(status_code=404, detail="Book not found")
+    transaction = db.query(Transaction).filter(
+        Transaction.book_id == book.id,
+        Transaction.user_id == current_user.id,
+        Transaction.status == "active"
+    ).first()
+    if not transaction:
+        logger.warning(f"No active transaction for ISBN: {isbn}, user: {current_user.id}")
+        raise HTTPException(status_code=400, detail="No active borrowing record found")
+
+    transaction.return_date = datetime.utcnow()
+    transaction.status = "returned"
+    book.status = "available"
+    db.commit()
+    logger.info(f"Book returned successfully: {isbn}")
+    return {"message": "Book returned successfully"}

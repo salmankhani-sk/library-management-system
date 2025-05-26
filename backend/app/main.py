@@ -11,6 +11,7 @@ from app.database import User, Book, get_db
 from app.routes import books, book_routes, auth as auth_routes, admin
 # Import get_password_hash function from auth_utils to securely hash user passwords before storing them.
 from app.auth_utils import get_password_hash
+from app.routes import books1
 
 # Initialize  the FastAPI application, which serves as the core of the web service.
 app = FastAPI()
@@ -23,7 +24,7 @@ app.include_router(book_routes.router)
 app.include_router(auth_routes.router)
 # Include the admin router, adding admin-specific endpoints (e.g., managing users or system settings).
 app.include_router(admin.router)
-
+app.include_router(books1.router)
 # Configure CORS middleware to allow cross-origin requests from specified origins.
 app.add_middleware(
     CORSMiddleware,  # Use CORSMiddleware class to handle CORS settings.
@@ -118,4 +119,4 @@ def get_books(db: Session = Depends(get_db)):
     # Query the database to fetch all Book records.
     books = db.query(Book).all()
     # Return a list of dictionaries, each containing a book's ID, title, author, ISBN, and status.
-    return [{"id": b.id, "title": b.title, "author": b.author, "isbn": b.isbn, "status": b.status} for b in books]
+    return [{"id": b.id, "title": b.title, "author": b.author, "isbn": b.isbn, "status": b.status ,"thumbnail": b.thumbnail} for b in books]

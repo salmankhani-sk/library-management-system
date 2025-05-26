@@ -65,3 +65,11 @@ class TokenData(BaseModel):
     # The role field is an optional string, representing the user's role extracted from the token (if present).
     # Like username, it defaults to None if the token doesn't include this information.
     role: str | None = None
+class BookResponse(BaseModel):
+    isbn: str
+    title: str
+    author: str
+    status: str
+
+    class Config:
+        from_attributes = True 

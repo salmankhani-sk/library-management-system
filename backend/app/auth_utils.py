@@ -42,7 +42,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "mysecret")  # Use a strong secret in produ
 # Define the algorithm used for signing JWTs, here set to HS256 (HMAC with SHA-256).
 # HS256 is a widely used symmetric signing algorithm combining a secret key with SHA-256 hashing.
 ALGORITHM = "HS256"
-
 # Create a CryptContext instance for password hashing, using bcrypt as the hashing scheme.
 # 'deprecated="auto"' ensures that deprecated schemes are updated automatically for security.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

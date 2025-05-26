@@ -69,7 +69,7 @@ export default function Home() {
           {/* A paragraph under the heading that describes the application.
               mt-4: margin top, text-lg: large text, max-w-xl: max width extra large, mx-auto: center horizontally */}
           <p className="mt-4 text-lg text-green-100 max-w-xl mx-auto">
-            Explore a vast collection of books tailored for agriculture, botany, and environmental science.
+            Explore a vast collection of books.
           </p>
         </motion.div>
 
