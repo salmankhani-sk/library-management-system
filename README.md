@@ -455,3 +455,19 @@ This project is licensed under the MIT License.
 - If you encounter problems, open an issue on the GitHub repository or contact the repository owner.
 
 **Alhamdulillah**, with these instructions, you should have the Library Management System up and running smoothly!
+
+
+# Navigate to the project folder
+   ```bash
+   cd library-management-system
+   ```
+
+# Fetch and merge the latest changes from the main branch
+   ```bash
+   git pull origin main
+   ```
+# WARNING: This will delete all your local changes
+   ```bash
+   git reset --hard origin/main
+   git pull origin main
+   ```
